@@ -196,17 +196,23 @@ async function submit(){
     })
   });
 
-  const j=await res.json();
-  let raw=j.choices?.[0]?.message?.content || "[0,0,0,0,0]";
-  raw=raw.replace(/```json|```/g,"").trim();
+  const j = await res.json();
+let raw = j.choices?.[0]?.message?.content || "";
 
-  let add;
+// 暴力提取 [0,2,0,0,0] 这种数组
+const match = raw.match(/\[(\s*\d+\s*,?\s*)+\]/);
+let add;
+
+if (match) {
   try {
-    add=JSON.parse(raw);
-  } catch(e){
-    console.error("AI返回解析失败:", raw);
-    add=[0,0,0,0,0];
+    add = JSON.parse(match[0]);
+  } catch (e) {
+    add = [0,0,0,0,0];
   }
+} else {
+  console.error("未找到数组，原始内容:", raw);
+  add = [0,0,0,0,0];
+}
 
   for(let i=0;i<5;i++) total[i]+=add[i];
   daily[today]=add;
