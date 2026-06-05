@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>PERSONA STATUS (TEST MODE)</title>
+<title>PERSONA STATUS</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap');
@@ -59,10 +59,10 @@ canvas { max-width:320px; max-height:320px; }
 <body>
 
 <h1>ペルソナ・ステータス</h1>
-<p class="sub">TEST MODE - NO AI REQUIRED</p>
+<p class="sub">CLICK CALENDAR TO VIEW DAILY GROWTH</p>
 
 <div class="log-area">
-  <textarea id="input" placeholder="随便输入点什么..."></textarea>
+  <textarea id="input" placeholder="今日何をした？"></textarea>
   <button onclick="submit()">記録する / SAVE</button>
 </div>
 
@@ -168,8 +168,8 @@ function closeModal(){
   document.getElementById("hint").innerText="当前显示：累计总属性";
 }
 
-/* ===== 提交（TEST MODE：写死数据） ===== */
-function submit(){
+/* ===== 提交 ===== */
+async function submit(){
   const txt=document.getElementById("input").value.trim();
   if(!txt) return;
   const today=fmt(new Date());
@@ -180,11 +180,33 @@ function submit(){
   logs[today]=(logs[today]?logs[today]+"\n---\n":"")+txt;
   localStorage.setItem(LOG_KEY, JSON.stringify(logs));
 
-  // ===== 核心测试代码：写死为“勇气+2” =====
-  const add = [0, 2, 0, 0, 0]; 
-  // 顺序是 [勇气, 灵巧, 体贴, 知识, 魅力]
-  // 如果你想测别的，改这里的数字就行，比如 [0,0,3,0,0] 就是体贴+3
-  // ==========================================
+  // 调用 DeepSeek
+  const res=await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer sk-你的DeepSeekKey"
+    },
+    body:JSON.stringify({
+      model:"deepseek-chat",
+      messages:[{
+        role:"user",
+        content:`用户今天做了：${txt}\n请从[勇气,灵巧,体贴,知识,魅力]中选唯一一项提升1-3分，返回严格JSON数组，如[0,2,0,0,0]。`
+      }]
+    })
+  });
+
+  const j=await res.json();
+  let raw=j.choices?.[0]?.message?.content || "[0,0,0,0,0]";
+  raw=raw.replace(/```json|```/g,"").trim();
+
+  let add;
+  try {
+    add=JSON.parse(raw);
+  } catch(e){
+    console.error("AI返回解析失败:", raw);
+    add=[0,0,0,0,0];
+  }
 
   for(let i=0;i<5;i++) total[i]+=add[i];
   daily[today]=add;
